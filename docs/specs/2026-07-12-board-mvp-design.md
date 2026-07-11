@@ -72,9 +72,11 @@ Node 20, ESM, no CDN (three is bundled by Vite). `ws` is the only runtime depend
   (§5) → `roster.upsert(event)` → `dirty = true` → `202 { ok: true }`. Ingest is HTTP, **not** ws.
 - **`GET *`** — serve the built client from `dist/`, with the game's path-traversal guard
   (`file.startsWith(publicDir)`); `/` → `index.html`. Unknown path → `404`.
-- **WebSocket** — **spectators only.** On connect: immediately send the current roster, then add the
-  socket to the broadcast set. Inbound ws messages are ignored (spectators are read-only). Drop on
-  `close`/`error`.
+- **WebSocket** — **spectators only.** On connect: add the socket to the broadcast set and mark the
+  roster dirty, so the next broadcast tick (≤50 ms) delivers the current roster to it. (A synchronous
+  send-on-connect races the ws handshake's buffered-frame replay against a just-connected client's
+  message listener — see the Task 2 report; tick-delivery sidesteps it and keeps a single delivery
+  path.) Inbound ws messages are ignored (spectators are read-only). Drop on `close`/`error`.
 - **Broadcast** — the game's `dirty`-flag + ~50 ms `setInterval` tick coalesces event bursts into one
   roster push to all sockets.
 - **Robustness** — a malformed request or one misbehaving socket **never crashes the hub** (try/catch
