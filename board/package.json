@@ -5,6 +5,10 @@
   "type": "module",
   "description": "Mission Control — the shared ws hub + Three.js spectator for Ship It",
   "scripts": {
+    "start": "node src/index.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
   }
 }
