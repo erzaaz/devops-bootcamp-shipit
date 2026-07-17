@@ -40,8 +40,8 @@ Distinct from its siblings (do not blur them):
   Pages; extensible to CF Pages). **No image** — the ship is static-only. Three.js, like `devops-bootcamp-app`.
 - **`shipit-board` is dual-role:** the *shared* Mission Control on instructor EC2, **and** the
   artifact each learner **builds + deploys to their own EC2** in the S4 capstone.
-- The freed `shipit-launchpad` name is reused for the **forkable learner repo**
-  `Infratify/shipit-launchpad` (see Distribution below), not an image.
+- Learners fork **this monorepo** (`Infratify/devops-bootcamp-shipit`) and work in `launchpad/`
+  (see Distribution below). The planned payload-only `shipit-launchpad` release repo was never used.
 
 ## PINNED — the 4-session arc (lean: one concept per session)
 
@@ -68,7 +68,9 @@ The one integration point. Keep it stable; slides and the reference workflows de
   named-palette colour; sets the ship's hue — every saturated texel takes that hue; greys/blacks stay
   neutral — and drives the UI accent) and `shipModel` (which of the 4 ships the board renders in
   orbit); `shipName` is a cosmetic label, not identity.
-- **Transport:** each workflow stage POSTs one event to the board.
+- **Transport:** a workflow step POSTs one event per stage it reports. The taught form (CI/CD 3
+  slides) is a **single liftoff report** after the Pages deploy; extra beats (pad, abort-on-failure)
+  are optional operator flourishes, never required of learners.
 
 ```
 POST  $BOARD_URL/api/event
@@ -86,6 +88,9 @@ Content-Type: application/json
 }
 ```
 
+- **Minimal payload:** only `callsign` + a known `stage`/`status` are required — the board defaults
+  `color`/`shipModel` when absent or invalid (`board/src/room.js`). Slides have learners hardcode
+  their own colour in the JSON body (no config-extraction plumbing in the workflow).
 - `$BOARD_URL` is a **public** repo/environment **variable**.
 - `$SHIPIT_TOKEN` is the **secret** taught in CI/CD 3 — a ship with no/late token can't report to
   Mission Control (the "unauthorized" lesson). Do NOT accept unauthenticated events in prod mode.
@@ -112,8 +117,11 @@ Frozen — slides quote these verbatim.
   `node scripts/preflight.mjs` validates `ship.config.json` and **exits non-zero (ABORT)** on a bad
   config (unparseable, bad hex, unknown emblem, over-long name). Teaches the *exit-code gate* (a
   DevOps skill), not test authoring (a developer skill).
-- **Reference workflows** live as the `cicd1..4` **answer-key branches** on `Infratify/shipit-launchpad`
-  (each = the full correct state at that session's end); slides lift the `deploy.yml` from them.
+- **The slides are the source of truth for the workflow** — learners build `deploy.yml` from the
+  building blocks on the slides, nothing else. The authored answer keys (`starter/workflows/`) were
+  retired 2026-07-17: learners shipped a simpler file than they prescribed, and the extra plumbing
+  (config extraction via `jq`, pad/abort beats, `env:` indirection) never earned its place. A
+  session's reference state is *derived* by running its amali on a test fork (see Distribution).
 - **Per-session commands** (kelas-taip-bersama): fork → author `deploy.yml` step-by-step per session →
   `git push` → watch. Full list in the spec §7.
 - **Slides drift note:** the bootcamp slides repo (`~/repo/slides-devops-bootcamp`) quotes the two
@@ -122,13 +130,16 @@ Frozen — slides quote these verbatim.
 
 ## PINNED — learner distribution (fork, not template)
 
-- Learners **fork** `Infratify/shipit-launchpad`. Branches: **`main`** = payload only
-  (`ship/` + `ship.config.json` + `preflight`, **no workflow, no `board/`**); **`cicd1..4`** = answer
-  keys (`board/` enters at `cicd4`).
-- **The learner authors the workflow** — `.github/workflows/deploy.yml` is NOT shipped; they write
-  it, it grows one job per session. That is the lesson.
-- **Discipline rule (load-bearing):** upstream `main` must never gain a workflow or re-touch
-  `ship.config.json` after release, so learner **sync-fork** stays conflict-free.
+- Learners **fork** `Infratify/devops-bootcamp-shipit` (this monorepo) and work in `launchpad/`
+  (workflow steps use `working-directory: launchpad`). The payload-only `shipit-launchpad` release
+  repo + its build scripts (`scripts/release-launchpad.sh` & co.) were retired 2026-07-17, never used.
+- **The learner authors the workflow** — `.github/workflows/deploy.yml` is NOT shipped on `main`;
+  they write it from the slide building blocks, and it grows each session. That is the lesson.
+- **`cicdN` reference branches** (recovery/diff aid, not a spec): before each session the operator
+  follows that session's amali verbatim on a test fork — proving the slides run green — and pushes
+  the resulting state as branch `cicdN` on `Infratify/devops-bootcamp-shipit`.
+- **Discipline rule (load-bearing):** upstream `main` must never gain `.github/workflows/` or
+  re-touch `launchpad/ship.config.json`, so learner **sync-fork** stays conflict-free.
 
 ## Conventions
 
