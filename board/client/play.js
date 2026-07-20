@@ -35,7 +35,7 @@ function render() {
 // this and send immediately in the input handler.
 function fracSender(ws) {
   let timer = null, latest = 0;
-  return (frac) => {
+  const send = (frac) => {
     latest = frac;
     if (timer) return;
     timer = setTimeout(() => {
@@ -45,6 +45,8 @@ function fracSender(ws) {
       }
     }, 100);
   };
+  send.cancel = () => { if (timer) { clearTimeout(timer); timer = null; } latest = 0; };
+  return send;
 }
 
 function connect() {
@@ -72,6 +74,7 @@ function connect() {
     const { matched, done } = typedState(target, entry.value);
     promptEl.dataset.matched = String(matched);
     if (done && phase === 'running') {
+      sendFrac.cancel();
       completed += 1;
       entry.value = '';
       ws.send(JSON.stringify({ t: 'progress', completed }));
