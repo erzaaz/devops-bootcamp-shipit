@@ -25,7 +25,7 @@ function ctx() {
   return ac;
 }
 
-function blip(freq, { dur = 0.08, type = 'sine', gain = 0.15, at = 0, slide = 0 } = {}) {
+function blip(freq, { dur = 0.08, type = 'sine', gain = 0.15, at = 0, slide = 0, attack = 0.004 } = {}) {
   if (muted) return;
   const a = ctx();
   if (!a) return;
@@ -35,18 +35,20 @@ function blip(freq, { dur = 0.08, type = 'sine', gain = 0.15, at = 0, slide = 0 
   o.type = type;
   o.frequency.setValueAtTime(freq, t);
   if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(1, freq + slide), t + dur);
-  g.gain.setValueAtTime(gain, t);
+  // Soft attack — instant-on sines click and read as arcade bleeps.
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + attack);
   g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g).connect(master);
   o.start(t);
   o.stop(t + dur + 0.02);
 }
 
-function whoosh({ dur = 0.3, from = 400, to = 2400, gain = 0.2 } = {}) {
+function whoosh({ dur = 0.3, from = 400, to = 2400, gain = 0.2, at = 0, type = 'bandpass' } = {}) {
   if (muted) return;
   const a = ctx();
   if (!a) return;
-  const t = a.currentTime;
+  const t = a.currentTime + at;
   const len = Math.ceil(a.sampleRate * dur);
   const buf = a.createBuffer(1, len, a.sampleRate);
   const d = buf.getChannelData(0);
@@ -54,7 +56,7 @@ function whoosh({ dur = 0.3, from = 400, to = 2400, gain = 0.2 } = {}) {
   const src = a.createBufferSource();
   src.buffer = buf;
   const f = a.createBiquadFilter();
-  f.type = 'bandpass';
+  f.type = type;
   f.Q.value = 1;
   f.frequency.setValueAtTime(from, t);
   f.frequency.exponentialRampToValueAtTime(to, t + dur);
@@ -68,23 +70,43 @@ function whoosh({ dur = 0.3, from = 400, to = 2400, gain = 0.2 } = {}) {
   src.stop(t + dur + 0.02);
 }
 
+// Cockpit palette, not arcade: sines/triangles with soft attacks, low
+// registers, filtered-noise air. No square waves, no rising chiptune runs.
 export const sfx = {
   get muted() { return muted; },
   set muted(v) { muted = v; store.set('shipit-sfx', v ? 'off' : 'on'); },
   unlock() { if (!muted) ctx(); },
-  // Correct keystroke: short high tick, pitch-jittered so a line of typing
-  // doesn't sound like a metronome.
-  key() { blip(1500 + Math.random() * 600, { dur: 0.03, type: 'square', gain: 0.045 }); },
-  // Wrong character: low dull thud.
-  miss() { blip(150, { dur: 0.06, type: 'square', gain: 0.06 }); },
-  // Command fully typed (awaiting ENTER): two rising chirps.
-  ready() { blip(880, { dur: 0.07, gain: 0.12 }); blip(1320, { dur: 0.09, gain: 0.12, at: 0.07 }); },
-  // ENTER boost: noise sweep + rising sawtooth — the thruster.
-  boost() { whoosh({ dur: 0.35, from: 300, to: 3200, gain: 0.25 }); blip(220, { dur: 0.3, type: 'sawtooth', gain: 0.1, slide: 440 }); },
-  // ENTER on a wrong line: short low buzz.
-  error() { blip(110, { dur: 0.18, type: 'sawtooth', gain: 0.12 }); },
-  // Race went live: two marks and a GO.
-  go() { blip(660, { dur: 0.09, gain: 0.15 }); blip(660, { dur: 0.09, gain: 0.15, at: 0.15 }); blip(990, { dur: 0.25, gain: 0.18, at: 0.3 }); },
-  // All prompts done: little ascending fanfare.
-  finish() { [523, 659, 784, 1047].forEach((f, i) => blip(f, { dur: 0.12, gain: 0.15, at: i * 0.09 })); },
+  // Correct keystroke: dampened console tap — a puff of low noise with a
+  // faint mid tone, pitch-jittered so a line of typing isn't a metronome.
+  key() {
+    whoosh({ dur: 0.025, from: 900, to: 500, gain: 0.05, type: 'lowpass' });
+    blip(520 + Math.random() * 120, { dur: 0.03, type: 'triangle', gain: 0.04 });
+  },
+  // Wrong character: soft low bump, pitch sagging.
+  miss() { blip(90, { dur: 0.08, type: 'sine', gain: 0.07, slide: -35 }); },
+  // Command fully typed (awaiting ENTER): single sonar ping, long tail.
+  ready() { blip(880, { dur: 0.35, type: 'sine', gain: 0.08, attack: 0.01 }); },
+  // ENTER boost: deep thruster — low noise sweep + a rumble rising under it.
+  boost() {
+    whoosh({ dur: 0.5, from: 120, to: 1400, gain: 0.28 });
+    blip(50, { dur: 0.45, type: 'sine', gain: 0.18, slide: 70 });
+  },
+  // ENTER on a wrong line: descending double "denied" thunk.
+  error() {
+    blip(160, { dur: 0.12, type: 'triangle', gain: 0.1, slide: -60 });
+    blip(110, { dur: 0.15, type: 'triangle', gain: 0.1, slide: -40, at: 0.12 });
+  },
+  // Race went live: two low countdown marks, then ignition — tone + rumble.
+  go() {
+    blip(392, { dur: 0.1, type: 'sine', gain: 0.12 });
+    blip(392, { dur: 0.1, type: 'sine', gain: 0.12, at: 0.18 });
+    blip(523, { dur: 0.4, type: 'sine', gain: 0.15, at: 0.36 });
+    whoosh({ dur: 0.6, from: 80, to: 400, gain: 0.12, at: 0.36, type: 'lowpass' });
+  },
+  // All prompts done: docking-complete — a warm low chord swelling in, with
+  // one soft ping on top. No fanfare arpeggio.
+  finish() {
+    [130.8, 196, 261.6].forEach((f) => blip(f, { dur: 1.0, type: 'sine', gain: 0.09, attack: 0.15 }));
+    blip(784, { dur: 0.6, type: 'sine', gain: 0.07, at: 0.25, attack: 0.02 });
+  },
 };
