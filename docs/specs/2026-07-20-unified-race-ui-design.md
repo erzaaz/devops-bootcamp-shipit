@@ -69,8 +69,10 @@ Same `{ update, dispose }` shape as every other view so `main.js` swaps it freel
   the transition (positions still update — discrete steps, no animation). No
   `requestAnimationFrame`, no WebGL at render time — the component IS the reduced-capability
   fallback, which is why `race-fallback.js` dies.
-- **Phases.** `idle`: dimmed rows + "WAITING FOR LAUNCH…" banner. `running`: live. `finished`:
-  podium banner overlays top 3 by `finishedAt`. Finished ships show `✦` + final rank on their row.
+- **Phases.** `idle`: dimmed rows + "WAITING FOR LAUNCH…" banner. `running`: live — and once any
+  racer lands, the banner shows podium medals as they arrive (a ghost racer who never finishes
+  blocks the server's `finished` phase forever, so winners must not wait for it). `finished`:
+  same podium banner, top 3 by `finishedAt`. Finished ships show `✦` + final rank on their row.
 - **Dark-only**, with its own local CSS custom properties (not the light/dark scheme in
   `style.css`/`play.css`) — consistent with the board's dark stage pages.
 
