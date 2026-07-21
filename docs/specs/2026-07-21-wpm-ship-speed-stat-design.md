@@ -1,7 +1,7 @@
 # WPM as a ship speed statistic
 
 **Date:** 2026-07-21
-**Status:** Design approved, spec under review
+**Status:** Implemented on `feat/wpm-ship-speed-stat` (5 commits `e44ca86`..`1b5aea2`)
 **Depends on:** the unified 2D race UI (`2026-07-20-unified-race-ui-design.md`)
 
 ## What
