@@ -8,7 +8,7 @@ const prompts = (n) => Array.from({ length: n }, (_, i) => `cmd${i + 1}`);
 test('join is idempotent and starts at the line', () => {
   const r = new Race({ total: 3 });
   const a = r.join('octocat');
-  assert.deepEqual(a, { completed: 0, finishedAt: null, frac: 0 });
+  assert.deepEqual(a, { completed: 0, finishedAt: null, frac: 0, wpm: 0 });
   r.join('octocat');
   assert.equal(r.snapshot().ships.length, 1);
 });
@@ -132,4 +132,45 @@ test('start and reset zero frac', () => {
   assert.equal(r.snapshot().ships[0].frac, 0);
   r.start(prompts(3));
   assert.equal(r.snapshot().ships[0].frac, 0);
+});
+
+test('report stores a clamped, rounded integer wpm', () => {
+  const r = new Race({ total: 3 });
+  r.join('octocat');
+  r.start(prompts(3));
+  r.report('octocat', 0, 0.5, 71.6);            // same-index report carries wpm
+  assert.equal(r.snapshot().ships[0].wpm, 72);  // rounded
+  r.report('octocat', 0, 0.5, -5);
+  assert.equal(r.snapshot().ships[0].wpm, 0);   // clamped to >= 0
+});
+
+test('report ignores junk wpm and keeps the last good value', () => {
+  const r = new Race({ total: 3 });
+  r.join('octocat');
+  r.start(prompts(3));
+  r.report('octocat', 0, 0.5, 60);
+  r.report('octocat', 0, 0.5, NaN);
+  assert.equal(r.snapshot().ships[0].wpm, 60);
+  r.report('octocat', 0, 0.5, undefined);
+  assert.equal(r.snapshot().ships[0].wpm, 60);
+});
+
+test('join, start and reset zero the wpm stat', () => {
+  const r = new Race({ total: 3 });
+  assert.equal(r.join('octocat').wpm, 0);
+  r.start(prompts(3));
+  r.report('octocat', 0, 0.5, 88);
+  assert.equal(r.snapshot().ships[0].wpm, 88);
+  r.start(prompts(3));                            // new round
+  assert.equal(r.snapshot().ships[0].wpm, 0);
+  r.report('octocat', 0, 0.5, 88);
+  r.reset();
+  assert.equal(r.snapshot().ships[0].wpm, 0);
+});
+
+test('a completion still advances position regardless of wpm', () => {
+  const r = new Race({ total: 3 });
+  r.join('octocat');
+  r.start(prompts(3));
+  assert.equal(r.report('octocat', 1, 0, 40).completed, 1); // wpm does not block advance
 });

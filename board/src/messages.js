@@ -5,6 +5,7 @@ export function parse(raw) {
 export const rosterMsg = (ships) => JSON.stringify({ t: 'roster', ships });
 
 // Enrich race positions with each ship's roster appearance (color/shipModel).
+// Position fields (completed/frac/finishedAt) and the wpm stat ride the ...s spread.
 export const raceMsg = (snap, view, clients, roster) => JSON.stringify({
   t: 'race', view, clients,
   phase: snap.phase, total: snap.total, prompts: snap.prompts,

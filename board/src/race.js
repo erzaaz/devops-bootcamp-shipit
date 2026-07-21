@@ -9,12 +9,12 @@ export class Race {
     this.total = total;
     this.phase = 'idle';        // idle | running | finished
     this.prompts = [];          // identical ordered command list for every racer
-    this.racers = new Map();    // callsign -> { completed, finishedAt, frac }
+    this.racers = new Map();    // callsign -> { completed, finishedAt, frac, wpm }
     this._seq = 0;              // monotonic finish-order counter
   }
 
   join(callsign) {
-    if (!this.racers.has(callsign)) this.racers.set(callsign, { completed: 0, finishedAt: null, frac: 0 });
+    if (!this.racers.has(callsign)) this.racers.set(callsign, { completed: 0, finishedAt: null, frac: 0, wpm: 0 });
     return this.racers.get(callsign);
   }
 
@@ -25,7 +25,7 @@ export class Race {
     if (this.prompts.length) this.total = this.prompts.length;
     this.phase = 'running';
     this._seq = 0;
-    for (const r of this.racers.values()) { r.completed = 0; r.finishedAt = null; r.frac = 0; }
+    for (const r of this.racers.values()) { r.completed = 0; r.finishedAt = null; r.frac = 0; r.wpm = 0; }
     return this;
   }
 
@@ -43,10 +43,11 @@ export class Race {
 
   // One entry point for cockpit reports: a completion advances; a same-index
   // report only refreshes the display-only typing fraction.
-  report(callsign, completed, frac) {
+  report(callsign, completed, frac, wpm) {
     if (this.phase !== 'running') return null;
     const r = this.racers.get(callsign);
     if (!r) return null;
+    if (Number.isFinite(wpm)) r.wpm = Math.max(0, Math.round(wpm));
     if (completed === r.completed + 1) return this.progress(callsign, completed);
     if (completed === r.completed) r.frac = clamp01(frac);
     return r;
@@ -55,12 +56,12 @@ export class Race {
   reset() {
     this.phase = 'idle';
     this.prompts = [];
-    for (const r of this.racers.values()) { r.completed = 0; r.finishedAt = null; r.frac = 0; }
+    for (const r of this.racers.values()) { r.completed = 0; r.finishedAt = null; r.frac = 0; r.wpm = 0; }
   }
 
   snapshot() {
     const ships = [...this.racers.entries()].map(([callsign, r]) => ({
-      callsign, completed: r.completed, finishedAt: r.finishedAt, frac: r.frac,
+      callsign, completed: r.completed, finishedAt: r.finishedAt, frac: r.frac, wpm: r.wpm,
     }));
     return { phase: this.phase, total: this.total, prompts: this.prompts, ships };
   }
