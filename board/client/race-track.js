@@ -109,9 +109,10 @@ export function createRaceTrack(container, { me = null } = {}) {
       const p = progressOf(s.completed, s.frac, total);
       r.ship.style.left = `calc((100% - var(--ship-w)) * ${p.toFixed(4)})`;
       r.rankEl.textContent = String(rk.get(s.callsign));
+      const wpm = Math.round(s.wpm || 0);
       r.meta.textContent = s.finishedAt != null
-        ? `✦ #${rk.get(s.callsign)}`
-        : `${((s.completed || 0) + (s.frac || 0)).toFixed(1)}/${total}`;
+        ? `✦ #${rk.get(s.callsign)}${wpm ? ` · ${wpm}wpm` : ''}`
+        : `${wpm ? `${wpm}wpm · ` : ''}${((s.completed || 0) + (s.frac || 0)).toFixed(1)}/${total}`;
       // Alphabetical slot, whatever the DOM insertion order was — except the
       // cockpit's own ship, pinned to the bottom so it sits right above the
       // typing dock (your ship moves where your eyes already are).
