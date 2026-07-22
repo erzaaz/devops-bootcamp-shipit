@@ -1,8 +1,9 @@
 name: deploy
 on: [push, workflow_dispatch]
- defaults:
+
+defaults:
       run:
-        working-directory: launchpad
+        working-directory: launchpad 
         
 jobs:
   test:
@@ -13,7 +14,7 @@ jobs:
       - run: npm clean-install
       - run: npm run test
 
-  deploy:
+deploy:
     needs: test
     runs-on: ubuntu-latest
     steps:
